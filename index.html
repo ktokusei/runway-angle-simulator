@@ -9,7 +9,7 @@
       --compass-border-color: #555;
       --text-color: #c9d1d9;
       --label-color: #8b949e;
-      --accent-color: #00d9f5; 
+      --accent-color: #00d9f5;
       --runway-bg: #21262d;
       --tick-color: #444;
     }
@@ -61,17 +61,17 @@
     }
     .tick {
       position: absolute;
-      height: 15px; 
+      height: 15px;
       width: 2px;
       background: var(--tick-color);
       top: 0px;
       left: 50%;
-      transform-origin: 50% 200px; 
+      transform-origin: 50% 200px;
     }
     .tick-major { height: 25px; width: 3px; background: #666;}
-    
 
-    .n { top: 20px; left: 50%; font-size: 1.4rem; color: #f25f5c; } 
+
+    .n { top: 20px; left: 50%; font-size: 1.4rem; color: #f25f5c; }
     .deg-30 { top: 58px; left: calc(50% + 115px); }
     .deg-60 { top: 135px; left: calc(50% + 165px); }
     .e { top: 50%; right: 20px; font-size: 1.4rem;}
@@ -92,11 +92,11 @@
       height: 100%;
       transition: transform 0.1s ease-out;
     }
-    
+
     .runway {
       position: absolute;
       top: 50%;
-      left: 3%; 
+      left: 3%;
       right: 3%;
       height: 64px;
       background: var(--runway-bg);
@@ -111,7 +111,7 @@
       border-radius: 4px;
       border: 1px solid #30363d;
       box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
-      overflow: hidden; 
+      overflow: hidden;
     }
 
     .center-line {
@@ -139,13 +139,13 @@
 
     .threshold-bar { width: 4px; height: 100%; background: #fff; }
 
-    .piano-keys { 
-      display: flex; 
-      flex-direction: column; 
-      justify-content: space-evenly; 
-      height: 75%; 
-      width: 16px; 
-      margin: 0 10px; 
+    .piano-keys {
+      display: flex;
+      flex-direction: column;
+      justify-content: space-evenly;
+      height: 75%;
+      width: 16px;
+      margin: 0 10px;
     }
     .key { width: 100%; height: 4px; background: #fff; }
 
@@ -161,21 +161,6 @@
       height: 100%;
       pointer-events: none;
     }
-    
-    .panel-readout {
-        position: absolute;
-        top: 50%;
-        right: -30px;
-        transform: translate(100%, -50%);
-        background: rgba(0,0,0,0.8);
-        border: 2px solid #222;
-        padding: 10px 20px;
-        border-radius: 8px;
-        color: var(--accent-color);
-        font-weight: bold;
-        font-size: 1.6rem;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    }
 
     .controls {
       margin-top: 40px;
@@ -184,12 +169,21 @@
       border-radius: 12px;
       border: 1px solid #30363d;
       box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-      width: 450px;
+      width: 640px;
+      box-sizing: border-box;
       /* Hardened layering to ensure clickability */
       position: relative;
-      z-index: 999; 
+      z-index: 999;
     }
-    
+
+    /* Top control row: dial on the left, location + declination on the right */
+    .control-top-row {
+      display: flex;
+      gap: 30px;
+      align-items: stretch;
+      margin-bottom: 25px;
+    }
+
     .slider-group {
       margin-bottom: 25px;
     }
@@ -203,13 +197,107 @@
       color: var(--accent-color);
     }
     /* Make sure sliders are fully clickable */
-    input[type=range] { 
-        width: 100%; 
-        accent-color: var(--accent-color); 
+    input[type=range] {
+        width: 100%;
+        accent-color: var(--accent-color);
         cursor: pointer;
         position: relative;
         z-index: 1000;
     }
+
+    /* ── True Heading dial ─────────────────────────────────────────── */
+    .dial-section {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      flex: 0 0 auto;
+    }
+    .dial-label { font-weight: bold; margin-bottom: 12px; }
+    .dial {
+      position: relative;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      border: 6px solid var(--compass-border-color);
+      background: radial-gradient(circle at 50% 38%, #1b2230, #0a0d12);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.5), inset 0 0 22px rgba(0,0,0,0.65);
+      cursor: grab;
+      touch-action: none; /* don't scroll the page while dragging on touch */
+      align-self: center;
+    }
+    .dial:active { cursor: grabbing; }
+    .dial-ticks { position: absolute; inset: 0; pointer-events: none; }
+    .dial-tick {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      width: 2px;
+      height: 10px;
+      background: var(--tick-color);
+      transform-origin: 50% 90px; /* 90 = dial radius (180/2) */
+    }
+    .dial-tick.major { height: 15px; width: 3px; background: #777; }
+    .dial-n {
+      position: absolute;
+      top: 9px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #f25f5c;
+      font-weight: bold;
+      font-size: 0.85rem;
+      pointer-events: none;
+    }
+    .dial-needle {
+      position: absolute;
+      left: 50%;
+      bottom: 50%;
+      width: 4px;
+      height: calc(50% - 14px);
+      margin-left: -2px;
+      background: linear-gradient(var(--accent-color), rgba(0,217,245,0.15));
+      border-radius: 2px;
+      transform-origin: 50% 100%;
+      transform: rotate(0deg);
+      pointer-events: none;
+      box-shadow: 0 0 8px rgba(0,217,245,0.6);
+    }
+    .dial-center {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: baseline;
+      background: rgba(0,0,0,0.6);
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 4px 8px;
+      z-index: 5;
+    }
+    #headingInput {
+      width: 56px;
+      background: transparent;
+      border: none;
+      color: var(--accent-color);
+      font-size: 1.8rem;
+      font-weight: bold;
+      text-align: right;
+      font-family: inherit;
+      padding: 0;
+    }
+    #headingInput:focus { outline: none; }
+    .dial-deg { color: var(--accent-color); font-size: 1.2rem; font-weight: bold; }
+
+    /* Right column: location finder + declination slider */
+    .right-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 25px;
+      min-width: 0;
+    }
+    .right-col .slider-group { margin-bottom: 0; }
 
     .status-panels {
         display: flex;
@@ -232,6 +320,7 @@
     .loc-row { display: flex; gap: 10px; }
     #locationInput {
       flex: 1;
+      min-width: 0;
       background: #0d1117;
       border: 1px solid #30363d;
       border-radius: 6px;
@@ -281,7 +370,7 @@
       <div class="label w">W</div>
       <div class="label deg-300">300</div>
       <div class="label deg-330">330</div>
-      
+
       <div class="ticks-overlay" id="ticksOverlay"></div>
 
       <svg class="arc" id="arcSvg" xmlns="http://www.w3.org/2000/svg">
@@ -300,7 +389,7 @@
             </div>
             <span id="primaryLabel" class="marker primary-marker"></span>
           </div>
-          
+
           <div class="center-line"></div>
 
           <div class="approach-zone right-approach">
@@ -313,38 +402,48 @@
         </div>
       </div>
     </div>
-    
-    <div class="panel-readout" id="trueHeadingPanel">87&deg;</div>
   </div>
 
   <div class="controls">
-    <div class="slider-group location-group">
-      <div class="slider-header">
-        <span>Find by Location</span>
+    <div class="control-top-row">
+
+      <!-- True Heading dial (draggable, editable hub) -->
+      <div class="dial-section">
+        <div class="dial-label">True Heading</div>
+        <div class="dial" id="headingDial">
+          <div class="dial-ticks" id="dialTicks"></div>
+          <div class="dial-n">N</div>
+          <div class="dial-needle" id="dialNeedle"></div>
+          <div class="dial-center">
+            <input type="text" id="headingInput" inputmode="numeric" maxlength="3" value="87">
+            <span class="dial-deg">&deg;</span>
+          </div>
+        </div>
       </div>
-      <div class="loc-row">
-        <input type="text" id="locationInput" placeholder="City or place (e.g. San Jose, CA)" autocomplete="off">
-        <button id="findBtn" type="button">Find</button>
+
+      <!-- Location finder + magnetic declination -->
+      <div class="right-col">
+        <div class="slider-group location-group">
+          <div class="slider-header">
+            <span>Find by Location</span>
+          </div>
+          <div class="loc-row">
+            <input type="text" id="locationInput" placeholder="City or place (e.g. San Jose, CA)" autocomplete="off">
+            <button id="findBtn" type="button">Find</button>
+          </div>
+          <div class="loc-status" id="locStatus">Enter a place to auto-set magnetic declination (WMM2025).</div>
+        </div>
+
+        <div class="slider-group">
+          <div class="slider-header">
+            <span>Magnetic Declination</span>
+            <span class="value-display" id="declinationValueDisplay">14&deg; E</span>
+          </div>
+          <input type="range" id="declinationSlider" min="-45" max="45" value="14" oninput="window.updateVisuals()" onchange="window.updateVisuals()">
+        </div>
       </div>
-      <div class="loc-status" id="locStatus">Enter a place to auto-set magnetic declination (WMM2025).</div>
     </div>
 
-    <div class="slider-group">
-      <div class="slider-header">
-        <span>True Heading</span>
-        <span class="value-display" id="headingValueDisplay">87&deg;</span>
-      </div>
-      <input type="range" id="headingSlider" min="0" max="359" value="87" oninput="window.updateVisuals()" onchange="window.updateVisuals()">
-    </div>
-
-    <div class="slider-group">
-      <div class="slider-header">
-        <span>Magnetic Declination</span>
-        <span class="value-display" id="declinationValueDisplay">14&deg; E</span>
-      </div>
-      <input type="range" id="declinationSlider" min="-45" max="45" value="14" oninput="window.updateVisuals()" onchange="window.updateVisuals()">
-    </div>
-    
     <div class="status-panels">
         <div class="panel-item">
             <div class="panel-label">Primary End</div>
@@ -360,13 +459,10 @@
   </div>
 
   <script>
-    const headingSlider = document.getElementById('headingSlider');
     const declinationSlider = document.getElementById('declinationSlider');
     const runway = document.getElementById('runway');
     const primaryLabel = document.getElementById('primaryLabel');
     const reciprocalLabel = document.getElementById('reciprocalLabel');
-    const trueHeadingPanel = document.getElementById('trueHeadingPanel');
-    const headingValueDisplay = document.getElementById('headingValueDisplay');
     const declinationValueDisplay = document.getElementById('declinationValueDisplay');
     const primaryReadoutPanel = document.getElementById('primaryReadout');
     const reciprocalReadoutPanel = document.getElementById('reciprocalReadout');
@@ -375,30 +471,49 @@
     const arcPath = document.getElementById('arcPath');
     const ticksOverlay = document.getElementById('ticksOverlay');
 
-    // Generate Notch Ticks safely
+    // True-heading dial elements
+    const headingDial = document.getElementById('headingDial');
+    const headingInput = document.getElementById('headingInput');
+    const dialNeedle = document.getElementById('dialNeedle');
+    const dialTicks = document.getElementById('dialTicks');
+
+    // Generate compass notch ticks safely
     if (ticksOverlay) {
         for (let i = 0; i < 360; i += 5) {
           const tick = document.createElement('div');
           tick.classList.add('tick');
-          if (i % 30 === 0) tick.classList.add('tick-major'); 
+          if (i % 30 === 0) tick.classList.add('tick-major');
           tick.style.transform = `translateX(-50%) rotate(${i}deg)`;
           ticksOverlay.appendChild(tick);
         }
     }
 
+    // Generate dial ticks (every 30°, major at cardinals)
+    if (dialTicks) {
+        for (let i = 0; i < 360; i += 30) {
+          const tick = document.createElement('div');
+          tick.classList.add('dial-tick');
+          if (i % 90 === 0) tick.classList.add('major');
+          tick.style.transform = `translateX(-50%) rotate(${i}deg)`;
+          dialTicks.appendChild(tick);
+        }
+    }
+
+    // Canonical true heading lives in headingInput. Normalize to 0–359.
+    function getHeading() {
+      return (((parseInt(headingInput.value, 10) || 0) % 360) + 360) % 360;
+    }
+
     // Attach function to window object so inline HTML listeners can guarantee a hit
     window.updateVisuals = function() {
-      // Defensive parsing to prevent NaN breaks
-      let trueAngle = parseInt(headingSlider.value) || 0;
+      let trueAngle = getHeading();
       let declination = parseInt(declinationSlider.value) || 0;
-      
-      trueHeadingPanel.textContent = `${trueAngle}°`;
-      headingValueDisplay.textContent = `${trueAngle}°`;
-      
+
       let decText = declination === 0 ? "0°" : Math.abs(declination) + (declination > 0 ? "° E" : "° W");
       declinationValueDisplay.textContent = decText;
-      
+
       runway.style.transform = `rotate(${trueAngle - 90}deg)`;
+      dialNeedle.style.transform = `rotate(${trueAngle}deg)`;
 
       let getMagHeading = (tHead, dec) => {
         let mh = (tHead - dec + 360) % 360;
@@ -421,29 +536,74 @@
 
       primaryLabel.textContent = primaryDesig;
       reciprocalLabel.textContent = reciprocalDesig;
-      
+
       primaryReadoutPanel.textContent = primaryDesig;
       reciprocalReadoutPanel.textContent = reciprocalDesig;
       magPrimarySub.textContent = `Mag: ${Math.round(magPrimary)}°`;
       magReciprocalSub.textContent = `Mag: ${Math.round(magReciprocal)}°`;
 
-      let radius = 175; 
-      let cx = 200, cy = 200; 
-      let rad = (trueAngle - 90) * Math.PI / 180; 
-      
+      let radius = 175;
+      let cx = 200, cy = 200;
+      let rad = (trueAngle - 90) * Math.PI / 180;
+
       let startX = cx;
-      let startY = cy - radius; 
+      let startY = cy - radius;
       let endX = cx + radius * Math.cos(rad);
       let endY = cy + radius * Math.sin(rad);
-      
+
       let largeArc = trueAngle > 180 ? 1 : 0;
-      
+
       if(trueAngle === 0) {
          arcPath.setAttribute('d', '');
       } else {
          arcPath.setAttribute('d', `M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 1 ${endX} ${endY}`);
       }
     };
+
+    // ── Dial interaction (drag + editable hub) ───────────────────────────────
+    let dialDragging = false;
+
+    function setHeading(deg) {
+      headingInput.value = (((Math.round(deg) % 360) + 360) % 360);
+      window.updateVisuals();
+    }
+
+    function angleFromPointer(e) {
+      const r = headingDial.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width / 2);
+      const dy = e.clientY - (r.top + r.height / 2);
+      // 0° at top, increasing clockwise
+      return Math.atan2(dx, -dy) * 180 / Math.PI;
+    }
+
+    headingDial.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('.dial-center')) return; // let the hub number be edited
+      dialDragging = true;
+      headingDial.setPointerCapture(e.pointerId);
+      setHeading(angleFromPointer(e));
+    });
+    headingDial.addEventListener('pointermove', (e) => {
+      if (!dialDragging) return;
+      setHeading(angleFromPointer(e));
+    });
+    const endDrag = (e) => {
+      dialDragging = false;
+      try { headingDial.releasePointerCapture(e.pointerId); } catch (_) {}
+    };
+    headingDial.addEventListener('pointerup', endDrag);
+    headingDial.addEventListener('pointercancel', endDrag);
+
+    // Editable hub number: digits only while typing, normalize on commit
+    headingInput.addEventListener('input', () => {
+      const cleaned = headingInput.value.replace(/[^0-9]/g, '');
+      if (cleaned !== headingInput.value) headingInput.value = cleaned;
+      window.updateVisuals();
+    });
+    headingInput.addEventListener('change', () => setHeading(parseInt(headingInput.value, 10) || 0));
+    headingInput.addEventListener('focus', () => headingInput.select());
+    headingInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); headingInput.blur(); }
+    });
 
     // ── Location → magnetic declination ──────────────────────────────────────
     // Geocode a place name (Nominatim, keyless) then fetch its WMM2025 magnetic
@@ -517,11 +677,8 @@
     });
 
     // Standard DOM listeners as a secondary trigger
-    headingSlider.addEventListener('input', window.updateVisuals);
-    declinationSlider.addEventListener('input', window.updateVisuals);
-    headingSlider.addEventListener('change', window.updateVisuals);
     declinationSlider.addEventListener('change', window.updateVisuals);
-    
+
     // Initialize — default location on launch
     window.updateVisuals();
     locationInput.value = 'Hawthorne, CA';
