@@ -43,7 +43,12 @@
       border: 6px solid var(--compass-border-color);
       background: #111;
       box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+      cursor: grab;
+      touch-action: none; /* don't scroll the page while dragging on touch */
+      -webkit-user-select: none; /* no text-selection highlight while dragging */
+      user-select: none;
     }
+    .compass:active { cursor: grabbing; }
 
     .label {
       position: absolute;
@@ -504,6 +509,19 @@
       return (((parseInt(headingInput.value, 10) || 0) % 360) + 360) % 360;
     }
 
+    // Unwrapped rotation used for CSS transforms so the runway/needle never spin
+    // the "long way" at the 0/359 wrap (which the CSS transition would animate).
+    let continuousHeading = null;
+    function trackContinuous(target) {
+      if (continuousHeading === null) {
+        continuousHeading = target;
+      } else {
+        const delta = (((target - continuousHeading) % 360) + 540) % 360 - 180; // shortest path, -180..180
+        continuousHeading += delta;
+      }
+      return continuousHeading;
+    }
+
     // Attach function to window object so inline HTML listeners can guarantee a hit
     window.updateVisuals = function() {
       let trueAngle = getHeading();
@@ -512,8 +530,9 @@
       let decText = declination === 0 ? "0°" : Math.abs(declination) + (declination > 0 ? "° E" : "° W");
       declinationValueDisplay.textContent = decText;
 
-      runway.style.transform = `rotate(${trueAngle - 90}deg)`;
-      dialNeedle.style.transform = `rotate(${trueAngle}deg)`;
+      let contAngle = trackContinuous(trueAngle);
+      runway.style.transform = `rotate(${contAngle - 90}deg)`;
+      dialNeedle.style.transform = `rotate(${contAngle}deg)`;
 
       let getMagHeading = (tHead, dec) => {
         let mh = (tHead - dec + 360) % 360;
@@ -592,6 +611,44 @@
     };
     headingDial.addEventListener('pointerup', endDrag);
     headingDial.addEventListener('pointercancel', endDrag);
+
+    // ── Compass/runway drag (incremental rotate — grab anywhere and spin) ────
+    // Uses relative deltas (not snap-to-cursor) so grabbing the symmetric runway
+    // bar doesn't flip it, and tracks a fractional accumulator to avoid the
+    // rounding "stickiness" that per-step integer rounding would cause.
+    const compass = document.querySelector('.compass');
+    let compassDragging = false;
+    let compassFloat = 0;        // fractional heading during drag
+    let compassLastAngle = 0;    // last pointer angle
+
+    function angleAt(el, e) {
+      const r = el.getBoundingClientRect();
+      const dx = e.clientX - (r.left + r.width / 2);
+      const dy = e.clientY - (r.top + r.height / 2);
+      return Math.atan2(dx, -dy) * 180 / Math.PI; // 0° at top, clockwise
+    }
+
+    compass.addEventListener('pointerdown', (e) => {
+      compassDragging = true;
+      compassFloat = getHeading();
+      compassLastAngle = angleAt(compass, e);
+      compass.setPointerCapture(e.pointerId);
+    });
+    compass.addEventListener('pointermove', (e) => {
+      if (!compassDragging) return;
+      const a = angleAt(compass, e);
+      const d = (((a - compassLastAngle) % 360) + 540) % 360 - 180; // shortest delta
+      compassLastAngle = a;
+      compassFloat = ((compassFloat + d) % 360 + 360) % 360;
+      headingInput.value = Math.round(compassFloat) % 360;
+      window.updateVisuals();
+    });
+    const endCompassDrag = (e) => {
+      compassDragging = false;
+      try { compass.releasePointerCapture(e.pointerId); } catch (_) {}
+    };
+    compass.addEventListener('pointerup', endCompassDrag);
+    compass.addEventListener('pointercancel', endCompassDrag);
 
     // Editable hub number: digits only while typing, normalize on commit
     headingInput.addEventListener('input', () => {
