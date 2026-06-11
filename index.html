@@ -228,6 +228,36 @@
     .panel-value { font-size: 1.6rem; font-weight: bold; color: var(--accent-color); }
     .mag-subtext { font-size: 0.8rem; color: #666; margin-top: 4px; }
 
+    /* Location finder */
+    .loc-row { display: flex; gap: 10px; }
+    #locationInput {
+      flex: 1;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: var(--text-color);
+      padding: 10px 12px;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    #locationInput:focus { outline: none; border-color: var(--accent-color); }
+    #findBtn {
+      background: var(--accent-color);
+      color: #04212a;
+      border: none;
+      border-radius: 6px;
+      padding: 0 18px;
+      font-weight: bold;
+      cursor: pointer;
+      font-size: 0.95rem;
+    }
+    #findBtn:hover { filter: brightness(1.1); }
+    #findBtn:disabled { opacity: 0.5; cursor: default; }
+    .loc-status { margin-top: 8px; font-size: 0.8rem; color: #8b949e; min-height: 1.1em; }
+    .loc-status.ok { color: #3fb950; }
+    .loc-status.err { color: #f85149; }
+    .loc-status.loading { color: var(--accent-color); }
+
     h2 { margin: 0 0 10px 0; color: #fff; text-align: center;}
     p.guide {color: #8b949e; text-align: center;}
   </style>
@@ -288,6 +318,17 @@
   </div>
 
   <div class="controls">
+    <div class="slider-group location-group">
+      <div class="slider-header">
+        <span>Find by Location</span>
+      </div>
+      <div class="loc-row">
+        <input type="text" id="locationInput" placeholder="City or place (e.g. San Jose, CA)" autocomplete="off">
+        <button id="findBtn" type="button">Find</button>
+      </div>
+      <div class="loc-status" id="locStatus">Enter a place to auto-set magnetic declination (WMM2025).</div>
+    </div>
+
     <div class="slider-group">
       <div class="slider-header">
         <span>True Heading</span>
@@ -404,14 +445,87 @@
       }
     };
 
+    // ── Location → magnetic declination ──────────────────────────────────────
+    // Geocode a place name (Nominatim, keyless) then fetch its WMM2025 magnetic
+    // declination (British Geological Survey web service, keyless). Both send
+    // CORS '*', so this works straight from the browser with no backend/API key.
+    const locationInput = document.getElementById('locationInput');
+    const findBtn = document.getElementById('findBtn');
+    const locStatus = document.getElementById('locStatus');
+
+    let programmaticDeclination = false; // true while WE set the slider (don't clear box)
+
+    function setLocStatus(msg, cls) {
+      locStatus.textContent = msg;
+      locStatus.className = 'loc-status' + (cls ? ' ' + cls : '');
+    }
+
+    async function findLocation() {
+      const q = locationInput.value.trim();
+      if (!q) { setLocStatus('Enter a place name first.', 'err'); return; }
+      findBtn.disabled = true;
+      setLocStatus('Searching for location…', 'loading');
+      try {
+        const geoRes = await fetch(
+          `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(q)}`);
+        if (!geoRes.ok) throw new Error('geocoder ' + geoRes.status);
+        const geo = await geoRes.json();
+        if (!geo.length) { setLocStatus(`Couldn't find "${q}".`, 'err'); return; }
+
+        const { lat, lon, display_name } = geo[0];
+        setLocStatus('Found place — getting magnetic declination…', 'loading');
+
+        const decRes = await fetch(
+          `https://geomag.bgs.ac.uk/web_service/GMModels/wmm/2025v1?latitude=${lat}&longitude=${lon}&altitude=0&format=json`);
+        if (!decRes.ok) throw new Error('WMM service ' + decRes.status);
+        const d = await decRes.json();
+        const dec = d['geomagnetic-field-model-result']['field-value']['declination']['value'];
+
+        applyModelDeclination(dec, display_name);
+      } catch (err) {
+        setLocStatus('Lookup failed: ' + err.message, 'err');
+      } finally {
+        findBtn.disabled = false;
+      }
+    }
+
+    function applyModelDeclination(dec, name) {
+      const rounded = Math.max(-45, Math.min(45, Math.round(dec)));
+      programmaticDeclination = true;
+      declinationSlider.value = rounded;   // assigning .value does NOT fire 'input'
+      window.updateVisuals();              // refresh runway + declination display
+      programmaticDeclination = false;
+      const dir = dec >= 0 ? 'E' : 'W';
+      const shortName = name.split(',').slice(0, 2).join(',').trim();
+      setLocStatus(
+        `✓ ${shortName} — WMM2025 declination ${Math.abs(dec).toFixed(1)}° ${dir}, slider set to ${rounded}°.`,
+        'ok');
+    }
+
+    findBtn.addEventListener('click', findLocation);
+    locationInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); findLocation(); }
+    });
+
+    // Manual declination drag means it's no longer tied to the named place — clear it.
+    declinationSlider.addEventListener('input', () => {
+      if (programmaticDeclination) return;          // ignore our own programmatic sets
+      if (locationInput.value !== '' || locStatus.classList.contains('ok')) {
+        locationInput.value = '';
+        setLocStatus('Manual declination — location cleared.', '');
+      }
+    });
+
     // Standard DOM listeners as a secondary trigger
     headingSlider.addEventListener('input', window.updateVisuals);
     declinationSlider.addEventListener('input', window.updateVisuals);
     headingSlider.addEventListener('change', window.updateVisuals);
     declinationSlider.addEventListener('change', window.updateVisuals);
     
-    // Initialize
-    window.updateVisuals(); 
+    // Initialize — default location on launch
+    window.updateVisuals();
+    locationInput.value = 'Hawthorne, CA';
+    findLocation();
   </script>
 
 </body>
