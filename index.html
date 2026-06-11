@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Aviation Runway Visualizer (Hardened)</title>
+  <style>
+    :root {
+      --bg-color: #0d1117;
+      --compass-border-color: #555;
+      --text-color: #c9d1d9;
+      --label-color: #8b949e;
+      --accent-color: #00d9f5; 
+      --runway-bg: #21262d;
+      --tick-color: #444;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: var(--bg-color);
+      padding: 40px 20px;
+      color: var(--text-color);
+      margin: 0;
+    }
+
+    .visual-frame {
+      position: relative;
+      width: 480px;
+      height: 480px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 1; /* Keep behind controls */
+    }
+
+    .compass {
+      position: relative;
+      width: 400px;
+      height: 400px;
+      border-radius: 50%;
+      border: 6px solid var(--compass-border-color);
+      background: #111;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+    }
+
+    .label {
+      position: absolute;
+      font-weight: bold;
+      font-size: 1.1rem;
+      color: var(--label-color);
+      transform: translate(-50%, -50%);
+    }
+
+    .ticks-overlay {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    .tick {
+      position: absolute;
+      height: 15px; 
+      width: 2px;
+      background: var(--tick-color);
+      top: 0px;
+      left: 50%;
+      transform-origin: 50% 200px; 
+    }
+    .tick-major { height: 25px; width: 3px; background: #666;}
+
+    .n { top: 20px; left: 50%; font-size: 1.4rem; color: #f25f5c; } 
+    .deg-30 { top: 58px; left: calc(50% + 115px); }
+    .deg-60 { top: 135px; left: calc(50% + 165px); }
+    .e { top: 50%; right: 20px; font-size: 1.4rem;}
+    .deg-120 { top: calc(100% - 135px); left: calc(50% + 165px); }
+    .deg-150 { top: calc(100% - 58px); left: calc(50% + 115px); }
+    .s { bottom: 20px; left: 50%; font-size: 1.4rem;}
+    .deg-210 { top: calc(100% - 58px); left: calc(50% - 115px); }
+    .deg-240 { top: calc(100% - 135px); left: calc(50% - 165px); }
+    .w { top: 50%; left: 20px; font-size: 1.4rem;}
+    .deg-300 { top: 135px; left: calc(50% - 165px); }
+    .deg-330 { top: 58px; left: calc(50% - 115px); }
+
+    .runway-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transition: transform 0.1s ease-out;
+    }
+    
+    .runway {
+      position: absolute;
+      top: 50%;
+      left: 3%; 
+      right: 3%;
+      height: 64px;
+      background: var(--runway-bg);
+      transform: translateY(-50%);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #fafafa;
+      font-weight: bold;
+      font-size: 1.8rem;
+      box-sizing: border-box;
+      border-radius: 4px;
+      border: 1px solid #30363d;
+      box-shadow: inset 0 0 15px rgba(0,0,0,0.5);
+      overflow: hidden; 
+    }
+
+    .center-line {
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 15%;
+        height: 2px;
+        border-top: 2px dashed rgba(255,255,255,0.4);
+    }
+
+    .approach-zone {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      z-index: 2;
+    }
+    .left-approach { flex-direction: row; }
+    .right-approach { flex-direction: row-reverse; }
+
+    .arrows { display: flex; gap: 5px; padding: 0 10px; }
+    .chevron-right { width: 8px; height: 8px; border-top: 2px solid #fff; border-right: 2px solid #fff; transform: rotate(45deg); }
+    .chevron-left { width: 8px; height: 8px; border-top: 2px solid #fff; border-right: 2px solid #fff; transform: rotate(-135deg); }
+
+    .threshold-bar { width: 4px; height: 100%; background: #fff; }
+
+    .piano-keys { 
+      display: flex; 
+      flex-direction: column; 
+      justify-content: space-evenly; 
+      height: 75%; 
+      width: 16px; 
+      margin: 0 10px; 
+    }
+    .key { width: 100%; height: 4px; background: #fff; }
+
+    .marker { padding: 0 10px; line-height: 1; }
+    .primary-marker { transform: rotate(90deg); }
+    .reciprocal-marker { transform: rotate(-90deg); }
+
+    .arc {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    
+    .panel-readout {
+        position: absolute;
+        top: 50%;
+        right: -30px;
+        transform: translate(100%, -50%);
+        background: rgba(0,0,0,0.8);
+        border: 2px solid #222;
+        padding: 10px 20px;
+        border-radius: 8px;
+        color: var(--accent-color);
+        font-weight: bold;
+        font-size: 1.6rem;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+
+    .controls {
+      margin-top: 40px;
+      background: #161b22;
+      padding: 25px 35px;
+      border-radius: 12px;
+      border: 1px solid #30363d;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      width: 450px;
+      /* Hardened layering to ensure clickability */
+      position: relative;
+      z-index: 999; 
+    }
+    
+    .slider-group {
+      margin-bottom: 25px;
+    }
+    .slider-header {
+      display: flex;
+      justify-content: space-between;
+      font-weight: bold;
+      margin-bottom: 10px;
+    }
+    .value-display {
+      color: var(--accent-color);
+    }
+    /* Make sure sliders are fully clickable */
+    input[type=range] { 
+        width: 100%; 
+        accent-color: var(--accent-color); 
+        cursor: pointer;
+        position: relative;
+        z-index: 1000;
+    }
+
+    .status-panels {
+        display: flex;
+        justify-content: space-around;
+        gap: 10px;
+    }
+    .panel-item {
+        flex: 1;
+        background: #111;
+        padding: 15px;
+        border-radius: 8px;
+        border: 1px solid #222;
+        text-align: center;
+    }
+    .panel-label { font-size: 0.75rem; text-transform: uppercase; color: #8b949e; letter-spacing: 1px; margin-bottom: 5px; }
+    .panel-value { font-size: 1.6rem; font-weight: bold; color: var(--accent-color); }
+    .mag-subtext { font-size: 0.8rem; color: #666; margin-top: 4px; }
+
+    h2 { margin: 0 0 10px 0; color: #fff; text-align: center;}
+    p.guide {color: #8b949e; text-align: center;}
+  </style>
+</head>
+<body>
+
+  <h2>Runway Designation Visualizer</h2>
+  <p class="guide">Adjust True Heading and Magnetic Declination to calculate runway numbers.</p>
+
+  <div class="visual-frame">
+    <div class="compass">
+      <div class="label n">N</div>
+      <div class="label deg-30">30</div>
+      <div class="label deg-60">60</div>
+      <div class="label e">E</div>
+      <div class="label deg-120">120</div>
+      <div class="label deg-150">150</div>
+      <div class="label s">S</div>
+      <div class="label deg-210">210</div>
+      <div class="label deg-240">240</div>
+      <div class="label w">W</div>
+      <div class="label deg-300">300</div>
+      <div class="label deg-330">330</div>
+      
+      <div class="ticks-overlay" id="ticksOverlay"></div>
+
+      <svg class="arc" id="arcSvg" xmlns="http://www.w3.org/2000/svg">
+        <path id="arcPath" fill="none" stroke="#2c3e50" stroke-width="6" />
+      </svg>
+
+      <div class="runway-container" id="runway">
+        <div class="runway">
+          <div class="approach-zone left-approach">
+            <div class="arrows">
+               <div class="chevron-right"></div><div class="chevron-right"></div><div class="chevron-right"></div>
+            </div>
+            <div class="threshold-bar"></div>
+            <div class="piano-keys">
+               <div class="key"></div><div class="key"></div><div class="key"></div><div class="key"></div><div class="key"></div>
+            </div>
+            <span id="primaryLabel" class="marker primary-marker"></span>
+          </div>
+          
+          <div class="center-line"></div>
+
+          <div class="approach-zone right-approach">
+            <div class="arrows">
+               <div class="chevron-left"></div><div class="chevron-left"></div><div class="chevron-left"></div>
+            </div>
+            <div class="threshold-bar"></div>
+            <span id="reciprocalLabel" class="marker reciprocal-marker"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="panel-readout" id="trueHeadingPanel">87&deg;</div>
+  </div>
+
+  <div class="controls">
+    <div class="slider-group">
+      <div class="slider-header">
+        <span>True Heading</span>
+        <span class="value-display" id="headingValueDisplay">87&deg;</span>
+      </div>
+      <input type="range" id="headingSlider" min="0" max="359" value="87" oninput="window.updateVisuals()" onchange="window.updateVisuals()">
+    </div>
+
+    <div class="slider-group">
+      <div class="slider-header">
+        <span>Magnetic Declination</span>
+        <span class="value-display" id="declinationValueDisplay">14&deg; E</span>
+      </div>
+      <input type="range" id="declinationSlider" min="-45" max="45" value="14" oninput="window.updateVisuals()" onchange="window.updateVisuals()">
+    </div>
+    
+    <div class="status-panels">
+        <div class="panel-item">
+            <div class="panel-label">Primary End</div>
+            <div class="panel-value" id="primaryReadout"></div>
+            <div class="mag-subtext" id="magPrimarySub"></div>
+        </div>
+        <div class="panel-item">
+            <div class="panel-label">Reciprocal End</div>
+            <div class="panel-value" id="reciprocalReadout"></div>
+            <div class="mag-subtext" id="magReciprocalSub"></div>
+        </div>
+    </div>
+  </div>
+
+  <script>
+    const headingSlider = document.getElementById('headingSlider');
+    const declinationSlider = document.getElementById('declinationSlider');
+    const runway = document.getElementById('runway');
+    const primaryLabel = document.getElementById('primaryLabel');
+    const reciprocalLabel = document.getElementById('reciprocalLabel');
+    const trueHeadingPanel = document.getElementById('trueHeadingPanel');
+    const headingValueDisplay = document.getElementById('headingValueDisplay');
+    const declinationValueDisplay = document.getElementById('declinationValueDisplay');
+    const primaryReadoutPanel = document.getElementById('primaryReadout');
+    const reciprocalReadoutPanel = document.getElementById('reciprocalReadout');
+    const magPrimarySub = document.getElementById('magPrimarySub');
+    const magReciprocalSub = document.getElementById('magReciprocalSub');
+    const arcPath = document.getElementById('arcPath');
+    const ticksOverlay = document.getElementById('ticksOverlay');
+
+    // Generate Notch Ticks safely
+    if (ticksOverlay) {
+        for (let i = 0; i < 360; i += 5) {
+          const tick = document.createElement('div');
+          tick.classList.add('tick');
+          if (i % 30 === 0) tick.classList.add('tick-major'); 
+          tick.style.transform = `translateX(-50%) rotate(${i}deg)`;
+          ticksOverlay.appendChild(tick);
+        }
+    }
+
+    // Attach function to window object so inline HTML listeners can guarantee a hit
+    window.updateVisuals = function() {
+      // Defensive parsing to prevent NaN breaks
+      let trueAngle = parseInt(headingSlider.value) || 0;
+      let declination = parseInt(declinationSlider.value) || 0;
+      
+      trueHeadingPanel.textContent = `${trueAngle}°`;
+      headingValueDisplay.textContent = `${trueAngle}°`;
+      
+      let decText = declination === 0 ? "0°" : Math.abs(declination) + (declination > 0 ? "° E" : "° W");
+      declinationValueDisplay.textContent = decText;
+      
+      runway.style.transform = `rotate(${trueAngle - 90}deg)`;
+
+      let getMagHeading = (tHead, dec) => {
+        let mh = (tHead - dec + 360) % 360;
+        return mh === 0 ? 360 : mh;
+      };
+
+      let calcDesignation = (deg) => {
+        let val = Math.round(deg / 10);
+        if (val === 0) return 36;
+        if (val > 36) return val - 36;
+        return val;
+      };
+
+      let magPrimary = getMagHeading(trueAngle, declination);
+      let primaryDesig = calcDesignation(magPrimary);
+
+      let trueReciprocal = (trueAngle + 180) % 360;
+      let magReciprocal = getMagHeading(trueReciprocal, declination);
+      let reciprocalDesig = calcDesignation(magReciprocal);
+
+      primaryLabel.textContent = primaryDesig;
+      reciprocalLabel.textContent = reciprocalDesig;
+      
+      primaryReadoutPanel.textContent = primaryDesig;
+      reciprocalReadoutPanel.textContent = reciprocalDesig;
+      magPrimarySub.textContent = `Mag: ${Math.round(magPrimary)}°`;
+      magReciprocalSub.textContent = `Mag: ${Math.round(magReciprocal)}°`;
+
+      let radius = 175; 
+      let cx = 200, cy = 200; 
+      let rad = (trueAngle - 90) * Math.PI / 180; 
+      
+      let startX = cx;
+      let startY = cy - radius; 
+      let endX = cx + radius * Math.cos(rad);
+      let endY = cy + radius * Math.sin(rad);
+      
+      let largeArc = trueAngle > 180 ? 1 : 0;
+      
+      if(trueAngle === 0) {
+         arcPath.setAttribute('d', '');
+      } else {
+         arcPath.setAttribute('d', `M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 1 ${endX} ${endY}`);
+      }
+    };
+
+    // Standard DOM listeners as a secondary trigger
+    headingSlider.addEventListener('input', window.updateVisuals);
+    declinationSlider.addEventListener('input', window.updateVisuals);
+    headingSlider.addEventListener('change', window.updateVisuals);
+    declinationSlider.addEventListener('change', window.updateVisuals);
+    
+    // Initialize
+    window.updateVisuals(); 
+  </script>
+
+</body>
+</html>
