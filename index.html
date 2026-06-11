@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Aviation Runway Visualizer (Hardened)</title>
   <style>
     :root {
@@ -23,12 +24,13 @@
       padding: 40px 20px;
       color: var(--text-color);
       margin: 0;
+      overflow-x: hidden;
     }
 
     .visual-frame {
       position: relative;
-      width: 480px;
-      height: 480px;
+      width: min(440px, 92vw);
+      height: min(440px, 92vw);
       display: flex;
       justify-content: center;
       align-items: center;
@@ -36,9 +38,12 @@
     }
 
     .compass {
+      /* --cs drives the whole compass so the absolutely-positioned labels and
+         ticks scale proportionally on small screens (they use calc(var(--cs)*…)). */
+      --cs: min(400px, 84vw);
       position: relative;
-      width: 400px;
-      height: 400px;
+      width: var(--cs);
+      height: var(--cs);
       border-radius: 50%;
       border: 6px solid var(--compass-border-color);
       background: #111;
@@ -71,23 +76,23 @@
       background: var(--tick-color);
       top: 0px;
       left: 50%;
-      transform-origin: 50% 200px;
+      transform-origin: 50% calc(var(--cs) / 2);
     }
     .tick-major { height: 25px; width: 3px; background: #666;}
 
 
-    .n { top: 20px; left: 50%; font-size: 1.4rem; color: #f25f5c; }
-    .deg-30 { top: 58px; left: calc(50% + 115px); }
-    .deg-60 { top: 135px; left: calc(50% + 165px); }
-    .e { top: 50%; right: 20px; font-size: 1.4rem;}
-    .deg-120 { top: calc(100% - 135px); left: calc(50% + 165px); }
-    .deg-150 { top: calc(100% - 58px); left: calc(50% + 115px); }
-    .s { bottom: 20px; left: 50%; font-size: 1.4rem;}
-    .deg-210 { top: calc(100% - 58px); left: calc(50% - 115px); }
-    .deg-240 { top: calc(100% - 135px); left: calc(50% - 165px); }
-    .w { top: 50%; left: 20px; font-size: 1.4rem;}
-    .deg-300 { top: 135px; left: calc(50% - 165px); }
-    .deg-330 { top: 58px; left: calc(50% - 115px); }
+    .n { top: calc(var(--cs) * 0.05); left: 50%; font-size: 1.4rem; color: #f25f5c; }
+    .deg-30 { top: calc(var(--cs) * 0.145); left: calc(50% + var(--cs) * 0.2875); }
+    .deg-60 { top: calc(var(--cs) * 0.3375); left: calc(50% + var(--cs) * 0.4125); }
+    .e { top: 50%; right: calc(var(--cs) * 0.05); font-size: 1.4rem;}
+    .deg-120 { top: calc(100% - var(--cs) * 0.3375); left: calc(50% + var(--cs) * 0.4125); }
+    .deg-150 { top: calc(100% - var(--cs) * 0.145); left: calc(50% + var(--cs) * 0.2875); }
+    .s { bottom: calc(var(--cs) * 0.05); left: 50%; font-size: 1.4rem;}
+    .deg-210 { top: calc(100% - var(--cs) * 0.145); left: calc(50% - var(--cs) * 0.2875); }
+    .deg-240 { top: calc(100% - var(--cs) * 0.3375); left: calc(50% - var(--cs) * 0.4125); }
+    .w { top: 50%; left: calc(var(--cs) * 0.05); font-size: 1.4rem;}
+    .deg-300 { top: calc(var(--cs) * 0.3375); left: calc(50% - var(--cs) * 0.4125); }
+    .deg-330 { top: calc(var(--cs) * 0.145); left: calc(50% - var(--cs) * 0.2875); }
 
     .runway-container {
       position: absolute;
@@ -174,7 +179,7 @@
       border-radius: 12px;
       border: 1px solid #30363d;
       box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-      width: 640px;
+      width: min(640px, 94vw);
       box-sizing: border-box;
       /* Hardened layering to ensure clickability */
       position: relative;
@@ -354,6 +359,21 @@
 
     h2 { margin: 0 0 10px 0; color: #fff; text-align: center;}
     p.guide {color: #8b949e; text-align: center;}
+
+    /* ── Mobile: stack the dial above the location/declination column ──────── */
+    @media (max-width: 600px) {
+      body { padding: 24px 10px; }
+      h2 { font-size: 1.4rem; }
+      p.guide { font-size: 0.9rem; }
+      .controls { padding: 20px 16px; }
+      .control-top-row {
+        flex-direction: column;
+        align-items: center;
+        gap: 22px;
+      }
+      .dial-section { align-items: center; width: 100%; }
+      .right-col { width: 100%; }
+    }
   </style>
 </head>
 <body>
