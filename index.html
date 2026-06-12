@@ -360,6 +360,46 @@
     h2 { margin: 0 0 10px 0; color: #fff; text-align: center;}
     p.guide {color: #8b949e; text-align: center;}
 
+    /* Runway designator format toggle (FAA / ICAO) */
+    .format-toggle {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid #30363d;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .format-label { font-weight: bold; font-size: 0.85rem; color: var(--label-color); text-transform: uppercase; letter-spacing: 1px; }
+    .toggle-row { display: flex; align-items: center; gap: 12px; }
+    .toggle-side { font-size: 0.9rem; font-weight: bold; color: #8b949e; transition: color 0.15s; }
+    .toggle-side.active { color: var(--accent-color); }
+    .switch { position: relative; display: inline-block; width: 50px; height: 26px; flex: 0 0 auto; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider-track {
+      position: absolute;
+      cursor: pointer;
+      inset: 0;
+      background: #30363d;
+      border-radius: 26px;
+      transition: background 0.2s;
+    }
+    .slider-track::before {
+      content: "";
+      position: absolute;
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background: var(--accent-color);
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .switch input:checked + .slider-track { background: rgba(0,217,245,0.25); }
+    .switch input:checked + .slider-track::before { transform: translateX(24px); }
+
     /* ── Mobile: stack the dial above the location/declination column ──────── */
     @media (max-width: 600px) {
       body { padding: 24px 10px; }
@@ -481,6 +521,18 @@
             <div class="mag-subtext" id="magReciprocalSub"></div>
         </div>
     </div>
+
+    <div class="format-toggle">
+      <span class="format-label">Runway Designator Format:</span>
+      <div class="toggle-row">
+        <span class="toggle-side active" id="faaLabel">FAA</span>
+        <label class="switch">
+          <input type="checkbox" id="formatToggle">
+          <span class="slider-track"></span>
+        </label>
+        <span class="toggle-side" id="icaoLabel">ICAO</span>
+      </div>
+    </div>
   </div>
 
   <script>
@@ -501,6 +553,15 @@
     const headingInput = document.getElementById('headingInput');
     const dialNeedle = document.getElementById('dialNeedle');
     const dialTicks = document.getElementById('dialTicks');
+
+    // Runway designator format: 'faa' (no leading zero) | 'icao' (leading zero on single digit)
+    const formatToggle = document.getElementById('formatToggle');
+    const faaLabel = document.getElementById('faaLabel');
+    const icaoLabel = document.getElementById('icaoLabel');
+    let designatorFormat = 'faa';
+    function fmtDesig(n) {
+      return (designatorFormat === 'icao' && n < 10) ? '0' + n : String(n);
+    }
 
     // Generate compass notch ticks safely
     if (ticksOverlay) {
@@ -573,11 +634,11 @@
       let magReciprocal = getMagHeading(trueReciprocal, declination);
       let reciprocalDesig = calcDesignation(magReciprocal);
 
-      primaryLabel.textContent = primaryDesig;
-      reciprocalLabel.textContent = reciprocalDesig;
+      primaryLabel.textContent = fmtDesig(primaryDesig);
+      reciprocalLabel.textContent = fmtDesig(reciprocalDesig);
 
-      primaryReadoutPanel.textContent = primaryDesig;
-      reciprocalReadoutPanel.textContent = reciprocalDesig;
+      primaryReadoutPanel.textContent = fmtDesig(primaryDesig);
+      reciprocalReadoutPanel.textContent = fmtDesig(reciprocalDesig);
       magPrimarySub.textContent = `Mag: ${Math.round(magPrimary)}°`;
       magReciprocalSub.textContent = `Mag: ${Math.round(magReciprocal)}°`;
 
@@ -755,6 +816,14 @@
 
     // Standard DOM listeners as a secondary trigger
     declinationSlider.addEventListener('change', window.updateVisuals);
+
+    // Runway designator format toggle (FAA ↔ ICAO)
+    formatToggle.addEventListener('change', () => {
+      designatorFormat = formatToggle.checked ? 'icao' : 'faa';
+      faaLabel.classList.toggle('active', designatorFormat === 'faa');
+      icaoLabel.classList.toggle('active', designatorFormat === 'icao');
+      window.updateVisuals();
+    });
 
     // Initialize — default location on launch
     window.updateVisuals();
